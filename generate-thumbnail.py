@@ -1,5 +1,6 @@
 #!/bin/python3
 import argparse
+import base64
 import io
 import sys
 
@@ -9,8 +10,8 @@ parser = argparse.ArgumentParser(
     description="A simple python script that transforms a png into a thumbnail for Prusa GCode"
 )
 parser.add_argument('-m', '--merge', action='store_true',
-                    help="If this flag is set, the generated thumbnail will be inserted into existing gcode" +\
-                        "file passed as output, replacing existing thumbnail data if present.")
+                    help="If this flag is set, the generated thumbnail will be inserted into existing gcode" +
+                    "file passed as output, replacing existing thumbnail data if present.")
 parser.add_argument('-s', '--size', nargs='?', default='220*124',
                     help="SIZE: '<int>*<int>' - Specifies the size of the generated thumbnail, 220*124 by default")
 parser.add_argument('input', type=argparse.FileType('rb'),
@@ -33,4 +34,19 @@ try:
     if len(size) != 2:
         raise SyntaxError
 except:
-    raise SyntaxError(f"SIZE should be of format '<int>*<int>', found '{args.size}'")
+    raise SyntaxError(
+        f"SIZE should be of format '<int>*<int>', found '{args.size}'")
+
+
+# Constants
+MAX_THUMBNAIL_LINE_LENGTH: int = 78
+
+
+# Code
+# Thumbnail generator
+thumbnail_str = base64.b64encode(input_file.read()).decode('utf-8')
+thumbnail_len = len(thumbnail_str)
+thumbnail_str = "; " + "\n; ".join(thumbnail_str[i:i + MAX_THUMBNAIL_LINE_LENGTH]
+                                   for i in range(0, len(thumbnail_str), MAX_THUMBNAIL_LINE_LENGTH))
+thumbnail_header = f"; \n; thumbnail begin {size[0]}x{size[1]} {thumbnail_len}"
+thumbnail_footer = f"; \n; thumbnail end"
