@@ -3,6 +3,7 @@ import argparse
 import base64
 import io
 import os
+import re
 import sys
 
 from PIL import Image
@@ -22,19 +23,13 @@ parser.add_argument('--crop', action='store_true',
                     help="Use this flag to crop input to aspect ratio of output before resizing.")
 parser.add_argument('input', type=argparse.FileType('rb'),
                     help="Input .png file")
-parser.add_argument('output', nargs='?', type=argparse.FileType('w'), default=sys.stdout,
+parser.add_argument('output', nargs='?', type=argparse.FileType('a'), default=sys.stdout,
                     help="Destination of generated thumnail, stdout by default.")
 
 args = parser.parse_args()
 input_file_reader: io.BufferedReader = args.input
 output_file: io.TextIOWrapper = args.output
 merge: bool = args.merge
-if merge:
-    if output_file.name == '<stdout>':
-        raise SyntaxError("Output must be specified to use --merge")
-    output_file = open(output_file.name, '+w')
-    if not output_file.readable():
-        raise IOError("Output should be readable to use --merge")
 resize: bool = args.size.lower() != 'keep'
 size: tuple = (220, 124)
 if resize:
@@ -81,14 +76,32 @@ thumbnail_str = base64.b64encode(input_file.getvalue()).decode('utf-8')
 thumbnail_len = len(thumbnail_str)
 thumbnail_str = "; " + "\n; ".join(thumbnail_str[i:i + MAX_THUMBNAIL_LINE_LENGTH]
                                    for i in range(0, len(thumbnail_str), MAX_THUMBNAIL_LINE_LENGTH))
-thumbnail_header = f"; \n; thumbnail begin {size[0]}x{size[1]} {thumbnail_len}"
+thumbnail_header = f";\n; thumbnail begin {size[0]}x{size[1]} {thumbnail_len}"
 thumbnail_footer = f"; thumbnail end\n;"
 input_file.close()
 
 # Outputting
 if merge:
-    raise NotImplementedError("--merge not implemented")
+    if output_file.name == '<stdout>':
+        raise SyntaxError("Output must be specified to use --merge")
+    output_file = open(output_file.name, 'r', encoding='utf-8')
+    if not output_file.readable():
+        raise IOError("Output should be readable to use --merge")
+
+    output_data = output_file.read()
+
+    thumbnail_regex = f';\n; thumbnail begin {size[0]}x{size[1]} [0-9]+\n(; .+\n)+; thumbnail end\n;'
+    thumbnail_full = '\n'.join((thumbnail_header, thumbnail_str, thumbnail_footer))
+    output_data, rep_count = re.subn(thumbnail_regex, thumbnail_full, output_data)
+
+    if rep_count == 0:
+        output_data = thumbnail_full + '\n' + output_data
+
+    output_file = open(output_file.name, 'w', encoding='utf-8')
+    output_file.write(output_data)
 else:
     output_file.write(thumbnail_header + '\n')
     output_file.write(thumbnail_str + '\n')
     output_file.write(thumbnail_footer + '\n')
+
+output_file.close()
