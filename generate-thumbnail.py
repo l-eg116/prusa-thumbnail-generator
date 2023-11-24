@@ -82,5 +82,13 @@ thumbnail_len = len(thumbnail_str)
 thumbnail_str = "; " + "\n; ".join(thumbnail_str[i:i + MAX_THUMBNAIL_LINE_LENGTH]
                                    for i in range(0, len(thumbnail_str), MAX_THUMBNAIL_LINE_LENGTH))
 thumbnail_header = f"; \n; thumbnail begin {size[0]}x{size[1]} {thumbnail_len}"
-thumbnail_footer = f"; \n; thumbnail end"
+thumbnail_footer = f"; thumbnail end\n;"
 input_file.close()
+
+# Outputting
+if merge:
+    raise NotImplementedError("--merge not implemented")
+else:
+    output_file.write(thumbnail_header + '\n')
+    output_file.write(thumbnail_str + '\n')
+    output_file.write(thumbnail_footer + '\n')
