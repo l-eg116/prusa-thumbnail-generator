@@ -95,6 +95,7 @@ if merge:
     output_data, rep_count = re.subn(thumbnail_regex, thumbnail_full, output_data)
 
     if rep_count == 0:
+        print("Didn't find thumbnail to replace, prepended thumbnail to output file", file=sys.stderr)
         output_data = thumbnail_full + '\n' + output_data
 
     output_file = open(output_file.name, 'w', encoding='utf-8')
