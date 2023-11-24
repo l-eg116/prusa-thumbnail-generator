@@ -13,18 +13,20 @@ parser = argparse.ArgumentParser(
     description="A simple python script that transforms a png into a thumbnail for Prusa GCode"
 )
 parser.add_argument('-m', '--merge', action='store_true',
-                    help="If this flag is set, the generated thumbnail will be inserted into existing gcode" +
+                    help="Set this flag to insert the generated thumbnail into existing gcode " +
                     "file passed as output, replacing existing thumbnail data if present.")
 parser.add_argument('-s', '--size', nargs='?', default='220x124',
-                    help="SIZE: '<int>x<int>' or 'keep' - Specifies the size of the generated thumbnail," +
+                    help="SIZE: '<width-int>x<height-int>' or 'keep' - Specifies the size of the generated thumbnail," +
                     "220x124 by default. Use 'keep' to prevent image resizing.")
+parser.add_argument('--crop', action='store_true',
+                    help="Use this flag to crop input to aspect ratio of output before resizing.")
 parser.add_argument('input', type=argparse.FileType('rb'),
                     help="Input .png file")
 parser.add_argument('output', nargs='?', type=argparse.FileType('w'), default=sys.stdout,
                     help="Destination of generated thumnail, stdout by default.")
 
 args = parser.parse_args()
-input_file: io.BufferedReader = args.input
+input_file_reader: io.BufferedReader = args.input
 output_file: io.TextIOWrapper = args.output
 merge: bool = args.merge
 if merge:
@@ -38,11 +40,12 @@ size: tuple = (220, 124)
 if resize:
     try:
         size = tuple(int(dim) for dim in args.size.strip().split('x'))
-        if len(size) != 2:
+        if len(size) != 2 or size[0] <= 0 or size[1] <= 0:
             raise SyntaxError
     except:
         raise SyntaxError(
             f"SIZE should be of format '<int>x<int>', found '{args.size}'")
+crop: bool = args.crop
 
 
 # Constants & global variables
@@ -51,15 +54,30 @@ MAX_THUMBNAIL_LINE_LENGTH: int = 78
 
 # Code
 # Image resizing
+image = Image.open(input_file_reader)
+
 if resize:
-    image = Image.open(input_file).resize(size)
-    input_file.close()
-    input_file = io.BytesIO()  # type: ignore
-    image.save(input_file, format='png')
-    image.show()
+
+    if crop:
+        width, height = image.size
+        aspect_ratio_target = size[1] / size[0]
+        aspect_ratio_current = height / width
+        if aspect_ratio_current > aspect_ratio_target:
+            offset = int((height - size[1] * width / size[0]) / 2)
+            image = image.crop((0, offset, width, height - offset))
+        elif aspect_ratio_current < aspect_ratio_target:
+            offset = int((width - size[0] * height / size[1]) / 2)
+            image = image.crop((offset, 0, width - offset, height))
+
+    image = image.resize(size)
+
+input_file_reader.close()
+input_file = io.BytesIO()
+image.save(input_file, format='png')
+
 
 # Thumbnail generator
-thumbnail_str = base64.b64encode(input_file.read()).decode('utf-8')
+thumbnail_str = base64.b64encode(input_file.getvalue()).decode('utf-8')
 thumbnail_len = len(thumbnail_str)
 thumbnail_str = "; " + "\n; ".join(thumbnail_str[i:i + MAX_THUMBNAIL_LINE_LENGTH]
                                    for i in range(0, len(thumbnail_str), MAX_THUMBNAIL_LINE_LENGTH))
