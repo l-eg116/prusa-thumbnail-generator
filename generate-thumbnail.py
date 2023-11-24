@@ -11,18 +11,19 @@ from PIL import Image
 
 # Arguments parsing
 parser = argparse.ArgumentParser(
-    description="A simple python script that transforms a png into a thumbnail for Prusa GCode"
+    description="A simple python script that transforms a png into a thumbnail for Prusa GCode",
+    epilog="A script by l_eg - More info on https://github.com/l-eg116/prusa-thumbnail-generator"
 )
 parser.add_argument('-m', '--merge', action='store_true',
-                    help="Set this flag to insert the generated thumbnail into existing gcode " +
-                    "file passed as output, replacing existing thumbnail data if present.")
+                    help="If this flag is set, existing thumbnail data in output (should be .gcode) will " +
+                    "be replaced with the one generated.")
 parser.add_argument('-s', '--size', nargs='?', default='220x124',
-                    help="SIZE: '<width-int>x<height-int>' or 'keep' - Specifies the size of the generated thumbnail," +
-                    "220x124 by default. Use 'keep' to prevent image resizing.")
+                    help="SIZE: '<width>x<height>' or 'keep' - Specifies the size of the generated thumbnail," +
+                    "220x124 by default. Use 'keep' to disable image resizing.")
 parser.add_argument('--crop', action='store_true',
-                    help="Use this flag to crop input to aspect ratio of output before resizing.")
+                    help="If this flag is set, the image will be cropped to target aspect ratio before being resized to prevent stretching.")
 parser.add_argument('input', type=argparse.FileType('rb'),
-                    help="Input .png file")
+                    help="The .png file that you want to make a thumbnail of.")
 parser.add_argument('output', nargs='?', type=argparse.FileType('a'), default=sys.stdout,
                     help="Destination of generated thumnail, stdout by default.")
 
