@@ -45,6 +45,7 @@ crop: bool = args.crop
 
 # Constants & global variables
 MAX_THUMBNAIL_LINE_LENGTH: int = 78
+thumbnail_regex = f';\n; thumbnail(_QOI)? begin {size[0]}x{size[1]} [0-9]+\n(; .+\n)+; thumbnail(_QOI)? end\n;'
 
 
 # Code
@@ -90,7 +91,6 @@ if merge:
 
     output_data = output_file.read()
 
-    thumbnail_regex = f';\n; thumbnail begin {size[0]}x{size[1]} [0-9]+\n(; .+\n)+; thumbnail end\n;'
     thumbnail_full = '\n'.join((thumbnail_header, thumbnail_str, thumbnail_footer))
     output_data, rep_count = re.subn(thumbnail_regex, thumbnail_full, output_data)
 
